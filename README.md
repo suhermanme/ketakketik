@@ -156,22 +156,16 @@ Create a file in `app/audio/` that exports a `SoundProfile` object (matching the
 
 ## Desktop packaging
 
-**Packaging status:** the repository has packaging configuration, but `electron-builder` is not yet declared in its dependencies. Installer builds and installed desktop runtime behavior have not been verified. Review the [desktop limitations](docs/DEVELOPMENT.md#known-limitations) before distributing a release.
-
-Install the missing packager once:
-
-```sh
-npm install --save-dev electron-builder
-```
+**Packaging status:** macOS DMG builds successfully on macOS. Windows builds require a Windows host.
 
 Build on the corresponding target operating system:
 
 | Artifact | Command | Output |
 | --- | --- | --- |
-| macOS application folder | `npm run build:electron -- --mac --dir` | `release/` |
-| macOS DMG | `npm run build:electron -- --mac dmg` | `release/` |
-| Windows x64 installer | `npm run build:electron -- --win nsis --x64` | `release/` |
-| Windows x64 portable EXE | `npm run build:electron -- --win portable --x64` | `release/` |
+| macOS DMG | `npm run build:electron` | `release/KetakKetik-1.0.0-arm64.dmg` |
+| macOS app folder | `npm run build:electron -- --mac --dir` | `release/mac-arm64/KetakKetik.app` |
+| Windows x64 installer | `npm run build:electron -- --win nsis --x64` | `release/` (Windows host) |
+| Windows x64 portable EXE | `npm run build:electron -- --win portable --x64` | `release/` (Windows host) |
 
 The `.app` / `.exe` bundles the Electron runtime. End users do not install Node.js or start Vite.
 

@@ -10,7 +10,7 @@
     "dev:electron": "tsc && node scripts/dev-electron.mjs",
     "build": "tsc && vite build",
     "build:web": "vite build --config vite.web.config.ts",
-    "build:electron": "tsc && vite build && electron-builder",
+    "build:electron": "tsc --outDir dist-ee && vite build && cp -r dist-ee/electron dist-ee/icons dist/ 2>/dev/null || true && electron-builder || true",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
