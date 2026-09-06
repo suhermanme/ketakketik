@@ -23,7 +23,7 @@ Stop the dev server with **Ctrl+C**.
 
 - **Node.js** ≥ 18
 - **npm** (any modern version)
-- macOS or Windows for desktop packaging (builds run on the target OS)
+- macOS, Windows, or Linux for desktop packaging (builds run on the target OS)
 
 ### Browser support
 
