@@ -1,0 +1,1 @@
+Built-in ImageGen edit: Preserve the silver typewriter, colorful keys and cream paper with burgundy asterisk. Enlarge within a centered macOS rounded-square pale tile occupying about 82% of the square canvas. Transparent outer padding. No text or watermark. Follow-up: remove checkerboard background and replace with actual PNG alpha transparency; preserve tile and typewriter.

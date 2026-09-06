@@ -1,0 +1,46 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "module": "ESNext",
+    "target": "ES2022",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "paths": {
+      "@ketakketik/engine": ["./engine/src"],
+      "@app/hooks/*": ["app/hooks/*"],
+      "@app/types/*": ["app/types/*"],
+      "@app/components/*": ["app/components/*"],
+      "@app/styles/*": ["app/styles/*"],
+      "@app/utils/*": ["app/utils/*"],
+      "@app/audio/*": ["app/audio/*"],
+      "@app/persistence/*": ["app/persistence/*"],
+      "@app/src/*": ["app/src/*"]
+    },
+    "typeRoots": ["./node_modules/@types", "./app/types"],
+    "outDir": "dist",
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": [
+    "app/**/*",
+    "electron/**/*",
+    "engine/src/**/*",
+    "vite.config.ts",
+    "tailwind.config.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "engine/node_modules",
+    "engine/dist"
+  ]
+}

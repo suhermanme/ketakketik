@@ -1,0 +1,108 @@
+/* ============================================================================
+   KetakKetik — Animation Keyframes
+   ============================================================================ */
+
+/* Cursor blink — 1s step-end infinite, 50% opacity */
+@keyframes cursorBlink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  50.01%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Error flash — red overlay, 200ms ease-out */
+@keyframes errorFlash {
+  0% {
+    background-color: rgba(196, 74, 58, 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+/* Error shake — ±4px horizontal oscillation, 300ms ease-out */
+@keyframes errorShake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-4px);
+  }
+  40% {
+    transform: translateX(4px);
+  }
+  60% {
+    transform: translateX(-2px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+}
+
+/* Character correct transition — gray to green, 150ms ease-in */
+@keyframes charCorrect {
+  0% {
+    color: #888888;
+  }
+  100% {
+    color: #4a8a5c;
+  }
+}
+
+/* Character fade — opacity 1 to 0.4, 1s ease-in */
+@keyframes charFade {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.4;
+  }
+}
+
+/* Panel slide — translateY 20px to 0, 200ms ease-out */
+@keyframes panelSlide {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Weak key indicator pulse — subtle glow for weakest keys */
+@keyframes weakKeyPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(196, 74, 58, 0);
+  }
+  50% {
+    box-shadow: 0 0 8px 2px rgba(196, 74, 58, 0.3);
+  }
+}
+
+/* Progress bar fill animation */
+@keyframes progressFill {
+  from {
+    width: 0%;
+  }
+}
+
+/* Metric value count-up pulse */
+@keyframes metricPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

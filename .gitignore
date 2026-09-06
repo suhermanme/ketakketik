@@ -1,0 +1,64 @@
+# ── Build output ─────────────────────────────────────────────
+dist/
+*.d.ts
+*.d.ts.map
+*.js.map
+
+# ── Node / npm ───────────────────────────────────────────────
+node_modules/
+package-lock.json
+npm-debug.log
+npm-*.log
+*.tgz
+.yarn/*
+
+# ── Electron packaging ───────────────────────────────────────
+release/
+*.dmg
+*.exe
+*.AppImage
+*.deb
+*.rpm
+*.zip
+*.tar.gz
+
+# ── IDE / editor ─────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── OS ───────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Desktop.ini
+
+# ── Environment / secrets ────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Engine sub-project (standalone package) ──────────────────
+engine/node_modules/
+engine/dist/
+engine/package-lock.json
+engine/*.tgz
+
+# ── Logs ─────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Coverage ─────────────────────────────────────────────────
+coverage/
+.nyc_output/
+
+# ── Temporary / cache ────────────────────────────────────────
+.tmp/
+.cache/
+*.tmp

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/dtds/plist-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Allow network access -->
+  <key>com.apple.security.network.inbound</key>
+  <true/>
+  <key>com.apple.security.network.outbound</key>
+  <true/>
+
+  <!-- Codesigning entitlements -->
+  <key>com.apple.application-identity</key>
+  <true/>
+
+  <!-- Hardening runtime -->
+  <key>com.apple.security.get-task-allow</key>
+  <false/>
+
+  <!-- Sandbox preferences -->
+  <key>com.apple.security.app-sandbox</key>
+  <true/>
+</dict>
+</plist>
