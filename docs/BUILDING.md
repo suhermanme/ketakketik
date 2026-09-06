@@ -46,48 +46,46 @@ The manifest supplies application identity and icons. There is no service worker
 
 ## Desktop: how it works
 
-The build compiles the Electron entry point and bundles the React UI. `package.json` points Electron to `dist/electron/main.js`. In production, the main process calls `BrowserWindow.loadFile()` for `dist/index.html`. `vite.config.ts` uses `base: './'` so the assets resolve relative to that file.
+The build pipeline runs four steps:
+
+1. **TypeScript compilation** (`tsc --outDir dist-ee`) — compiles `electron/` and `app/` source to `dist-ee/`
+2. **Vite production build** (`vite build`) — bundles the React UI into `dist/`
+3. **Merge** (`cp -r dist-ee/electron dist-ee/icons dist/`) — copies Electron main/preload files into the Vite output
+4. **Packaging** (`electron-builder`) — bundles everything into a `.app` and `.dmg`
+
+`package.json` points Electron to `dist/electron/main.js`. In production, the main process calls `BrowserWindow.loadFile()` for `dist/index.html`. `vite.config.ts` uses `base: './'` so the assets resolve relative to that file.
 
 A packaged app ignores `VITE_DEV_SERVER_URL`. Installed users do not start Vite, install Node.js, or open a local port. Electron includes Chromium and Node.js internally; this is a bundled desktop application, not a rewrite into OS-native UI code.
 
 ## Install the desktop packager
 
-The existing `build:electron` script calls `electron-builder`, but the checked-in dependency list does not include it. Before packaging:
+`electron-builder` is already declared in devDependencies. Run `npm ci` once to install it.
 
-```sh
-npm install --save-dev electron-builder
-```
-
-Keep the resulting manifest and lockfile changes. Installing dependencies and the first packaging run may download platform tools. Consult the [electron-builder CLI reference](https://www.electron.build/cli/) for target flags.
-
-**Verification status:** TypeScript, automated tests, and Vite production builds have passed. The following packaging commands are intended workflows, not evidence that installers have been successfully built or tested. Review the [known desktop issues](DEVELOPMENT.md#known-limitations) before release.
+**Verification status:** macOS DMG builds have been verified on Apple Silicon (macOS 25.6). Windows builds require a Windows host and have not been tested.
 
 ## macOS application and DMG
 
-Run on macOS after dependency and packager installation.
+Run on macOS after `npm ci`.
 
-Build an application folder for the machine's architecture:
+A single command builds both the app bundle and the DMG:
+
+```sh
+npm run build:electron
+```
+
+Output:
+- `release/mac-arm64/KetakKetik.app` — application bundle (Apple Silicon)
+- `release/KetakKetik-1.0.0-arm64.dmg` — DMG installer
+
+Drag the `.app` into Applications and launch it normally. Double-click the `.dmg` to install.
+
+For an unpacked app directory only (no DMG):
 
 ```sh
 npm run build:electron -- --mac --dir
 ```
 
-Typical output is `release/mac-arm64/KetakKetik.app` on Apple Silicon or `release/mac/KetakKetik.app` on Intel. Use the actual path printed by the packager. Drag the app into Applications and launch it normally.
-
-Create a DMG:
-
-```sh
-npm run build:electron -- --mac dmg
-```
-
-Select the architecture explicitly if needed:
-
-```sh
-npm run build:electron -- --mac dmg --arm64
-npm run build:electron -- --mac dmg --x64
-```
-
-The installer output is in `release/`; the filename includes product/version details chosen by the packager. The macOS icon comes from `build/icons/KetakKetik.icns`. The runtime also sets the Dock icon from the bundled PNG.
+The macOS icon comes from `build/icons/KetakKetik.icns`. The runtime also sets the Dock icon from the bundled PNG.
 
 Signing and notarization credentials are not configured in this repository. Preparing an app for public distribution requires a separate signing/notarization workflow; creating a local `.app` is not proof that it is ready for distribution.
 
@@ -97,7 +95,6 @@ On a Windows machine, open PowerShell in the project root:
 
 ```powershell
 npm ci
-npm install --save-dev electron-builder
 npm run build:electron -- --win nsis --x64
 ```
 
@@ -188,7 +185,7 @@ Both Vite configurations write to `dist/`. Run `npm run build` immediately befor
 
 | Symptom | Check |
 | --- | --- |
-| `electron-builder` not found | Install it with `npm install --save-dev electron-builder` |
+| `electron-builder` not found | Run `npm ci` to install all devDependencies |
 | Blank desktop window / missing assets | Rebuild with `npm run build`; check relative URLs and `dist/electron/main.js` |
 | Desktop tries connecting to localhost | Clear `VITE_DEV_SERVER_URL` for unpackaged testing |
 | Preload import or `contextBridge.register` error | See the documented preload/IPC limitations; these are existing source issues |
