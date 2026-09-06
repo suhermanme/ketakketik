@@ -156,14 +156,16 @@ Create a file in `app/audio/` that exports a `SoundProfile` object (matching the
 
 ## Desktop packaging
 
-**Packaging status:** macOS DMG builds successfully on macOS. Windows builds require a Windows host.
+**Packaging status:** macOS DMG builds successfully on macOS. Windows and Linux builds require the respective host OS.
 
 Build on the corresponding target operating system:
 
 | Artifact | Command | Output |
 | --- | --- | --- |
-| macOS DMG | `npm run build:electron` | `release/KetakKetik-1.0.0-arm64.dmg` |
+| macOS DMG | `npm run build:electron` | `release/*.dmg` |
 | macOS app folder | `npm run build:electron -- --mac --dir` | `release/mac-arm64/KetakKetik.app` |
+| Linux AppImage | `npm run build:electron -- --linux appimage` | `release/*.AppImage` |
+| Linux .deb | `npm run build:electron -- --linux deb` | `release/*.deb` |
 | Windows x64 installer | `npm run build:electron -- --win nsis --x64` | `release/` (Windows host) |
 | Windows x64 portable EXE | `npm run build:electron -- --win portable --x64` | `release/` (Windows host) |
 
@@ -176,7 +178,7 @@ See [Build and deployment](docs/BUILDING.md) for complete instructions, architec
 ## Documentation
 
 - [User guide](docs/USER_GUIDE.md) — modes, lessons, custom files, controls, metrics, audio, themes, profiles
-- [Build and deployment](docs/BUILDING.md) — browser dev, static hosting, Electron dev, macOS DMGs, Windows installers
+- [Build and deployment](docs/BUILDING.md) — browser dev, static hosting, Electron dev, macOS DMGs, Linux AppImage/deb, Windows installers
 - [Development guide](docs/DEVELOPMENT.md) — source layout, data flow, testing, extension points, known limitations
 - [Original architecture specification](ARCHITECTURE.md) — historical design intent; not a statement of current implemented behavior
 - [Engine algorithm design](engine/docs/algorithm-design.md) — mathematical formulation and scoring details

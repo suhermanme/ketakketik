@@ -114,6 +114,29 @@ npm run build:electron -- --win --dir --x64
 
 Use a native Windows build environment for this documented workflow. The supplied Windows icon is `public/icons/icon-512.png`; installer icon conversion is handled by the packager. Windows signing is not configured, and the Windows runtime/installer has not been tested in this workspace.
 
+## Linux packages
+
+On a Linux machine with `npm ci` run:
+
+```sh
+npm run build:electron -- --linux appimage
+```
+
+Output: `release/KetakKetik-1.0.0-linux-arm64.AppImage` (on ARM) or `...-linux-x64.AppImage`.
+
+Other Linux targets:
+
+| Target | Command | Output |
+| --- | --- | --- |
+| AppImage | `npm run build:electron -- --linux appimage` | `release/*.AppImage` |
+| Debian package | `npm run build:electron -- --linux deb` | `release/*.deb` |
+| RPM package | `npm run build:electron -- --linux rpm` | `release/*.rpm` |
+| Unpacked dir | `npm run build:electron -- --linux --dir` | `release/linux-arm64/` |
+
+The Linux icon comes from `public/icons/icon-512.png`. AppImages are portable and require no installation — just make the file executable (`chmod +x`) and run it. Debian/RPM packages require `dpkg`/`rpm` respectively.
+
+Linux signing is not configured. AppImage bundles include the Electron runtime and all dependencies.
+
 ## Run compiled Electron locally without a port
 
 Build the desktop-compatible assets first:
