@@ -9,6 +9,8 @@ import { useAudio } from '@app/hooks/useAudio';
 import { loadCustomText } from '@app/utils/customText';
 import { FINGER_LESSONS, TrainingMode } from '@app/utils/lessons';
 import { useTypingSession } from '@app/hooks/useTypingSession';
+import { useSessionHistory } from '@app/hooks/useSessionHistory';
+import { SessionHistoryDashboard } from '@app/components/SessionHistoryDashboard';
 import { Keyboard } from '@app/components/Keyboard';
 import { MetricsPanel } from '@app/components/MetricPanel';
 import { CompletionConfetti } from '@app/components/CompletionConfetti';
@@ -24,6 +26,7 @@ export const App: React.FC = () => {
   const { current, list, switchProfile, createProfile, deleteProfile } = useProfile();
   const { state: audioState, playKey, playFeedback, setProfile: setAudioProfile, setVolume: setAudioVolume } = useAudio();
   const [trainingMode, setTrainingMode] = useState<TrainingMode>('practice');
+  const [viewMode, setViewMode] = useState<'practice' | 'history'>('practice');
   const [lessonIndex, setLessonIndex] = useState(0);
   const [customText, setCustomText] = useState('');
   const [customFilename, setCustomFilename] = useState('');
@@ -32,6 +35,24 @@ export const App: React.FC = () => {
   const fileRequestRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const session = useTypingSession(current.id, trainingMode, lessonIndex, customText);
+
+  // Session history
+  const { sessions, stats, loading, errors, fetchHistory, fetchStats } = useSessionHistory();
+  const hasHistory = sessions.length > 0;
+
+  const [loadedHistory, setLoadedHistory] = useState(false);
+
+  useEffect(() => {
+    if (viewMode === 'history' && current.id && !loadedHistory) {
+      setLoadedHistory(true);
+      fetchHistory(current.id).catch(() => {});
+      fetchStats(current.id).catch(() => {});
+    }
+    if (viewMode !== 'history') {
+      setLoadedHistory(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, current.id]);
   const selectTextFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -183,6 +204,38 @@ export const App: React.FC = () => {
             effectiveTheme={effectiveTheme}
             onToggle={setMode}
           />
+          {/* View mode toggle */}
+          <div className="flex items-center gap-1 rounded-lg border overflow-hidden border-gray-400/30">
+            <button
+              onClick={() => setViewMode('practice')}
+              className={`px-3 py-2 text-xs font-medium transition-all duration-150 ${
+                viewMode === 'practice'
+                  ? 'bg-blue-500/30 text-blue-300'
+                  : effectiveTheme === 'dark'
+                    ? 'bg-gray-800/40 text-gray-400 hover:text-gray-300'
+                    : 'bg-white/60 text-gray-500 hover:text-gray-700'
+              }`}
+              aria-pressed={viewMode === 'practice'}
+            >
+              Practice
+            </button>
+            <button
+              onClick={() => setViewMode('history')}
+              className={`px-3 py-2 text-xs font-medium transition-all duration-150 relative ${
+                viewMode === 'history'
+                  ? 'bg-blue-500/30 text-blue-300'
+                  : effectiveTheme === 'dark'
+                    ? 'bg-gray-800/40 text-gray-400 hover:text-gray-300'
+                    : 'bg-white/60 text-gray-500 hover:text-gray-700'
+              }`}
+              aria-pressed={viewMode === 'history'}
+            >
+              History
+              {hasHistory && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blue-400" />
+              )}
+            </button>
+          </div>
           <div className={`w-full p-3 rounded-xl border ${effectiveTheme === 'dark' ? 'bg-gray-800/40 border-gray-700 text-gray-200' : 'bg-white/60 border-gray-200 text-gray-800'}`}>
             <div className="flex flex-wrap items-center gap-3">
               <label className="text-sm font-medium flex items-center gap-2">
@@ -227,79 +280,93 @@ export const App: React.FC = () => {
       </header>
 
       {/* Main area */}
-      <main className="flex-1 flex flex-col md:flex-row items-center justify-center gap-4 p-4">
-        <div className="flex-1 min-w-0 flex flex-col items-center justify-center max-w-4xl w-full">
-          <WpmGraph
-            samples={session.wpmHistory}
-            currentWpm={session.stats.currentWpm}
+      <main className="flex-1 flex flex-col items-center justify-start md:justify-center gap-4 p-4">
+        {viewMode === 'history' ? (
+          <SessionHistoryDashboard
+            sessions={sessions}
+            stats={stats}
+            loading={loading}
+            errors={errors}
             effectiveTheme={effectiveTheme}
-            completed={session.stats.completedAt !== null}
           />
-          {trainingMode === 'custom' && !customText && <p className="w-full text-center py-6 text-sm opacity-75">Load a text file above to start your custom typing session. Files stay on this device.</p>}
-          <TrainingDisplay
-            finalWpm={session.stats.averageWpm}
-            trainingString={session.trainingString}
-            currentIndex={session.currentIndex}
-            charStates={session.charStates}
-            effectiveTheme={effectiveTheme}
-            isSessionActive={session.isSessionActive}
-          />
+        ) : (
+          <>
+            <div className="flex-1 min-w-0 flex flex-col items-center justify-center max-w-4xl w-full">
+              <WpmGraph
+                samples={session.wpmHistory}
+                currentWpm={session.stats.currentWpm}
+                effectiveTheme={effectiveTheme}
+                completed={session.stats.completedAt !== null}
+              />
+              {trainingMode === 'custom' && !customText && <p className="w-full text-center py-6 text-sm opacity-75">Load a text file above to start your custom typing session. Files stay on this device.</p>}
+              <TrainingDisplay
+                finalWpm={session.stats.averageWpm}
+                trainingString={session.trainingString}
+                currentIndex={session.currentIndex}
+                charStates={session.charStates}
+                effectiveTheme={effectiveTheme}
+                isSessionActive={session.isSessionActive}
+              />
 
-          {/* Keyboard */}
-          <div className="w-full max-w-4xl mt-4">
-            <Keyboard
-              activeKeys={activeKeys}
-              errorKeys={errorKeys}
-              weakKeys={trainingMode === 'lessons' ? FINGER_LESSONS[lessonIndex].keys : session.weakKeys.map((wk) => wk.key)}
-              effectiveTheme={effectiveTheme}
-            />
-          </div>
-        </div>
+              {/* Keyboard */}
+              <div className="w-full max-w-4xl mt-4">
+                <Keyboard
+                  activeKeys={activeKeys}
+                  errorKeys={errorKeys}
+                  weakKeys={trainingMode === 'lessons' ? FINGER_LESSONS[lessonIndex].keys : session.weakKeys.map((wk) => wk.key)}
+                  effectiveTheme={effectiveTheme}
+                />
+              </div>
+            </div>
 
-        {/* Metrics panel (desktop only) */}
-        <div className="hidden md:block shrink-0">
-          <MetricsPanel
-            stats={session.stats}
-            effectiveTheme={effectiveTheme}
-            isSessionActive={session.isSessionActive}
-            onNextLesson={trainingMode === 'lessons' && session.stats.completedAt !== null && lessonIndex < FINGER_LESSONS.length - 1 ? () => {
-              setLessonIndex(index => index + 1); clearKeys(); containerRef.current?.focus();
-            } : undefined}
-            newLessonLabel={trainingMode === 'custom' ? 'Load text file' : 'New lesson'}
-            progress={session.trainingString.length ? session.currentIndex / session.trainingString.length : 0}
-            onRestart={restartLesson}
-            onRegenerate={newLesson}
-          />
-        </div>
+            {/* Metrics panel (desktop only) */}
+            <div className="hidden md:block shrink-0">
+              <MetricsPanel
+                stats={session.stats}
+                effectiveTheme={effectiveTheme}
+                isSessionActive={session.isSessionActive}
+                onNextLesson={trainingMode === 'lessons' && session.stats.completedAt !== null && lessonIndex < FINGER_LESSONS.length - 1 ? () => {
+                  setLessonIndex(index => index + 1); clearKeys(); containerRef.current?.focus();
+                } : undefined}
+                newLessonLabel={trainingMode === 'custom' ? 'Load text file' : 'New lesson'}
+                progress={session.trainingString.length ? session.currentIndex / session.trainingString.length : 0}
+                onRestart={restartLesson}
+                onRegenerate={newLesson}
+              />
+            </div>
+          </>
+        )}
       </main>
 
       {/* Mobile metrics */}
-      <div className="md:hidden px-4 py-2 shrink-0">
-        <div className={`flex flex-wrap gap-2 items-center justify-around text-center text-sm ${effectiveTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-          {trainingMode === 'lessons' && session.stats.completedAt !== null && lessonIndex < FINGER_LESSONS.length - 1 && (
-            <button className="px-3 py-1 rounded-md bg-blue-600 text-white" onClick={() => { setLessonIndex(index => index + 1); clearKeys(); containerRef.current?.focus(); }}>Next lesson</button>
-          )}
-          <span>WPM: <strong className={textClass}>{session.stats.currentWpm}</strong></span>
-          <span>Acc: <strong className={textClass}>{session.stats.accuracy}%</strong></span>
-          <span>Errors: <strong className={textClass}>{session.stats.totalErrors}</strong></span>
-          <button
-            onClick={restartLesson}
-            className="px-3 py-1 rounded-md text-xs font-medium border border-blue-400 text-blue-500"
-          >
-            Restart session
-          </button>
-          <button
-            onClick={newLesson}
-            className={`px-3 py-1 rounded-md text-xs font-medium ${
-              effectiveTheme === 'dark'
-                ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
-                : 'bg-blue-500/20 text-blue-600 hover:bg-blue-500/30'
-            } transition-all duration-150`}
-          >
-            {trainingMode === 'custom' ? 'Load text file' : 'New lesson'}
-          </button>
+      {viewMode !== 'history' && (
+        <div className="md:hidden px-4 py-2 shrink-0">
+          <div className={`flex flex-wrap gap-2 items-center justify-around text-center text-sm ${effectiveTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+            {trainingMode === 'lessons' && session.stats.completedAt !== null && lessonIndex < FINGER_LESSONS.length - 1 && (
+              <button className="px-3 py-1 rounded-md bg-blue-600 text-white" onClick={() => { setLessonIndex(index => index + 1); clearKeys(); containerRef.current?.focus(); }}>Next lesson</button>
+            )}
+            <span>WPM: <strong className={textClass}>{session.stats.currentWpm}</strong></span>
+            <span>Acc: <strong className={textClass}>{session.stats.accuracy}%</strong></span>
+            <span>Errors: <strong className={textClass}>{session.stats.totalErrors}</strong></span>
+            <button
+              onClick={restartLesson}
+              className="px-3 py-1 rounded-md text-xs font-medium border border-blue-400 text-blue-500"
+            >
+              Restart session
+            </button>
+            <button
+              onClick={newLesson}
+              className={`px-3 py-1 rounded-md text-xs font-medium ${
+                effectiveTheme === 'dark'
+                  ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
+                  : 'bg-blue-500/20 text-blue-600 hover:bg-blue-500/30'
+              } transition-all duration-150`}
+            >
+              {trainingMode === 'custom' ? 'Load text file' : 'New lesson'}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
