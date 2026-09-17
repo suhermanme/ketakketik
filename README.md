@@ -206,8 +206,7 @@ See [Build and deployment](docs/BUILDING.md) for complete instructions, architec
 
 ## Known limitations
 
-- The adaptive engine currently receives **empty performance inputs** from the main UI, so it does not yet personalise practice from saved session data.
-- Session history is persisted in IndexedDB but is not wired up in the current UI.
+- Session history is persisted in IndexedDB but is not wired up in the current UI — no dashboard or history view exists yet.
 - Browser and desktop storage namespaces are separate.
 - Desktop installer builds have not been verified.
 
