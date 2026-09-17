@@ -65,6 +65,13 @@ export const App: React.FC = () => {
     }
   }, [session.stats.completedAt, playFeedback]);
 
+  // Complete the session and record data to IndexedDB on session completion
+  useEffect(() => {
+    if (session.stats.completedAt !== null) {
+      session.completeSession();
+    }
+  }, [session.stats.completedAt, session.completeSession]);
+
   const [activeKeys, setActiveKeys] = useState<Set<string>>(new Set());
   const [errorKeys, setErrorKeys] = useState<Set<string>>(new Set());
   const clearKeys = useCallback(() => {

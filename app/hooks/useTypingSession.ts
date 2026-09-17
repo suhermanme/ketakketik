@@ -10,7 +10,10 @@ import {
   EngineTrainingSession,
 } from '@app/types/typing';
 import { FINGER_LESSONS, generateFingerDrill, TrainingMode } from '@app/utils/lessons';
-import { AdaptiveEngine, KeyMatrix, SessionRecord, WeakKey } from '@ketakketik/engine';
+import { AdaptiveEngine, WeakKey } from '@ketakketik/engine';
+import { ProfileStore } from '@app/persistence/ProfileStore';
+import { SessionType } from '@app/persistence/types';
+import { generateUuid } from '@app/persistence/idb-wrapper';
 
 /** Initial session stats */
 const INITIAL_STATS: SessionStats = {
@@ -46,6 +49,7 @@ export function useTypingSession(profileId: string, mode: TrainingMode = 'practi
   handleKeyUp: (event: KeyboardEvent) => void;
   reset: () => void;
   regenerate: () => void;
+  completeSession: () => Promise<void>;
   isSessionActive: boolean;
 } {
   const [trainingString, setTrainingString] = useState<string>('');
@@ -66,33 +70,35 @@ export function useTypingSession(profileId: string, mode: TrainingMode = 'practi
   const peakWpmRef = useRef<number>(0);
   const keyPressesRef = useRef<Record<string, number>>({});
   const keyErrorsRef = useRef<Record<string, number>>({});
-  const latencyRef = useRef<number[]>([]);
+  const keyLatenciesRef = useRef<number[]>([]);
+  const keyDownTimeRef = useRef<number>(0);
   const errorTimersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
   const engineRef = useRef<AdaptiveEngine>(
     new AdaptiveEngine({ profileId, sessionLength: 175, weakKeyCount: 3 }),
   );
+  const profileStoreRef = useRef<ProfileStore>(new ProfileStore());
 
   /** Generate a new training session from the engine */
-  const generateSession = useCallback((): EngineTrainingSession => {
-    const keyMatrix: KeyMatrix = {};
-    const sessions: SessionRecord[] = [];
-    const prevWeakKeys: WeakKey[] = [];
-    const prevMatrix: KeyMatrix = {};
+  const generateSession = useCallback(async (): Promise<EngineTrainingSession> => {
+    console.log('[useTypingSession] generateSession called, profileId:', profileId);
+    const inputs = await profileStoreRef.current.getAdaptiveInputs(profileId);
+    console.log('[useTypingSession] getAdaptiveInputs returned:', { keyMatrixKeys: Object.keys(inputs.keyMatrix), sessionCount: inputs.recentSessions.length, weakKeyCount: inputs.previousWeakKeys.length });
 
     const session = engineRef.current.generateSession(
-      keyMatrix,
-      sessions,
-      prevWeakKeys,
-      prevMatrix,
+      inputs.keyMatrix,
+      inputs.recentSessions,
+      inputs.previousWeakKeys,
+      inputs.previousKeyMatrix,
       lessonIndexRef.current++,
     );
 
+    console.log('[useTypingSession] engine.generateSession returned trainingString length:', session.trainingString.length);
     return session;
   }, [profileId]);
 
   /** Initialize or regenerate session */
-  const regenerate = useCallback(() => {
-    const session = generateSession();
+  const regenerate = useCallback(async () => {
+    const session = await generateSession();
     const text = mode === 'custom' ? customText : mode === 'lessons'
       ? generateFingerDrill(FINGER_LESSONS[lessonIndex], lessonIndexRef.current - 1)
       : session.trainingString;
@@ -116,7 +122,8 @@ export function useTypingSession(profileId: string, mode: TrainingMode = 'practi
     peakWpmRef.current = 0;
     keyPressesRef.current = {};
     keyErrorsRef.current = {};
-    latencyRef.current = [];
+    keyLatenciesRef.current = [];
+    keyDownTimeRef.current = 0;
     errorTimersRef.current.forEach(timer => clearTimeout(timer));
     errorTimersRef.current.clear();
     startTimeRef.current = 0;
@@ -126,9 +133,39 @@ export function useTypingSession(profileId: string, mode: TrainingMode = 'practi
   /** Restart the current lesson. */
   const reset = resetSession;
 
+  /** Record session data to IndexedDB after completion */
+  const completeSession = useCallback(async (): Promise<void> => {
+    const avgLatencyMs = keyLatenciesRef.current.length > 0
+      ? Math.round(keyLatenciesRef.current.reduce((s, l) => s + l, 0) / keyLatenciesRef.current.length)
+      : 0;
+
+    const sessionId = generateUuid();
+    await profileStoreRef.current.recordSessionKeyData(
+      sessionId,
+      keyErrorsRef.current,
+      keyPressesRef.current,
+      avgLatencyMs,
+    );
+
+    await profileStoreRef.current.recordSession({
+      sessionId,
+      profileId,
+      startedAt: stats.startedAt,
+      completedAt: stats.completedAt ?? Date.now(),
+      type: SessionType.PRACTICE,
+      avgWpm: stats.averageWpm,
+      peakWpm: stats.peakWpm,
+      accuracy: stats.accuracy,
+      textSample: trainingString,
+      durationMs: stats.durationMs,
+    });
+  }, [profileId, stats, trainingString]);
+
   /** Handle key down event */
   const handleKeyDown = useCallback(
     (event: KeyboardEvent): void => {
+      keyDownTimeRef.current = Date.now();
+
       if (event.repeat) return;
       if (event.ctrlKey || event.metaKey || event.altKey) return;
 
@@ -211,6 +248,7 @@ export function useTypingSession(profileId: string, mode: TrainingMode = 'practi
       // Update stats
       correctRef.current++;
       keyPressesRef.current[key] = (keyPressesRef.current[key] || 0) + 1;
+      profileStoreRef.current.recordKeyEvent(key, 'press').catch(() => {});
 
       const durationMs = elapsed > 0 ? elapsed : 1;
       const wordsTyped = (currentIndex + 1) / 5;
@@ -255,6 +293,7 @@ export function useTypingSession(profileId: string, mode: TrainingMode = 'practi
     (key: string, _event: KeyboardEvent): void => {
       errorsRef.current++;
       keyErrorsRef.current[key] = (keyErrorsRef.current[key] || 0) + 1;
+      profileStoreRef.current.recordKeyEvent(key, 'error').catch(() => {});
 
       // Show error flash and shake
       setCharStates((prev) => {
@@ -297,10 +336,13 @@ export function useTypingSession(profileId: string, mode: TrainingMode = 'practi
     (event: KeyboardEvent): void => {
       const key = event.key;
       if (key.length === 1 || key === ' ') {
-        latencyRef.current.push(Date.now() - startTimeRef.current);
+        const now = Date.now();
+        if (now > keyDownTimeRef.current && isSessionActive) {
+          keyLatenciesRef.current.push(now - keyDownTimeRef.current);
+        }
       }
     },
-    [],
+    [isSessionActive],
   );
 
   // Keep the rate and duration moving even while the typist pauses.
@@ -334,8 +376,19 @@ export function useTypingSession(profileId: string, mode: TrainingMode = 'practi
   useEffect(() => {
     engineRef.current = new AdaptiveEngine({ profileId, sessionLength: 175, weakKeyCount: 3 });
     lessonIndexRef.current = 0;
-    regenerate();
-  }, [profileId, regenerate]);
+    regenerate().catch(err => {
+      console.error('[useTypingSession] Failed to generate initial session:', err);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileId]);
+
+  // Regenerate training text when training mode, lesson, or custom text changes
+  useEffect(() => {
+    regenerate().catch(err => {
+      console.error('[useTypingSession] Failed to regenerate:', err);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, lessonIndex, customText]);
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -356,6 +409,7 @@ export function useTypingSession(profileId: string, mode: TrainingMode = 'practi
     handleKeyUp,
     reset,
     regenerate,
+    completeSession,
     isSessionActive,
   };
 }

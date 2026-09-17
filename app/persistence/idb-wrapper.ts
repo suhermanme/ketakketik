@@ -150,11 +150,20 @@ export interface IdbCursorResult<T> {
   hasMore: boolean;
 }
 
+/**
+ * Get all records by index key.
+ * For composite (compound) indexes like ['profileId', 'timestamp'],
+ * pass the key as an array (e.g. [profileId, timestamp]).
+ * For prefix queries on compound indexes (only first element),
+ * pass an array with just the prefix (e.g. [profileId]) — this
+ * automatically converts to a proper IDBKeyRange so all records
+ * starting with that prefix are returned.
+ */
 export function getAllByIndex<T>(
   db: IDBDatabase,
   storeName: string,
   indexName: string,
-  keyValue: string | number,
+  keyValue: string | number | (string | number)[],
   mode: IdbReadMode = 'readonly',
 ): Promise<T[]> {
   return new Promise<T[]>((resolve, reject) => {

@@ -73,25 +73,15 @@ export function createDatabase(db: IDBDatabase): void {
 
 // ── Migration ──────────────────────────────────────────────────────────────────
 
-export async function migrateSchema(db: IDBDatabase, currentVersion: number): Promise<void> {
+/**
+ * Synchronous migration — must NOT use async/await or Promise-based transactions
+ * because onupgradeneeded only allows operations within the active version-change
+ * transaction. No separate transactions can be created during onupgradeneeded.
+ */
+function migrateSchema(db: IDBDatabase, currentVersion: number): void {
   if (currentVersion < CURRENT_SCHEMA_VERSION) {
     createSchemaWithIndexes(db);
   }
-
-  // Always ensure meta entry exists
-  await putMetaEntry(db);
-}
-
-async function putMetaEntry(db: IDBDatabase): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
-    const transaction = db.transaction(META_STORE, 'readwrite');
-    const store = transaction.objectStore(META_STORE);
-    const request = store.put({ key: META_KEY, value: CURRENT_SCHEMA_VERSION });
-
-    request.onsuccess = () => resolve();
-    request.onerror = () =>
-      reject(new PersistenceError(PersistenceErrorType.DB_OPEN_FAILED, 'Failed to write meta entry'));
-  });
 }
 
 // ── Database Initialization ────────────────────────────────────────────────────
@@ -113,20 +103,27 @@ export function initializeDatabase(): Promise<IDBDatabase> {
       );
     };
 
-    request.onsuccess = () => {
+    request.onsuccess = async () => {
       const db = request.result;
+      // Ensure meta entry exists after DB is fully open.
+      // Cannot be done inside onupgradeneeded (no separate transactions allowed).
+      try {
+        const tx = db.transaction(META_STORE, 'readwrite');
+        tx.objectStore(META_STORE).put({ key: META_KEY, value: CURRENT_SCHEMA_VERSION });
+        await new Promise<void>((res, rej) => {
+          tx.oncomplete = () => res();
+          tx.onerror = () => rej(new PersistenceError(PersistenceErrorType.DB_OPEN_FAILED, 'Failed to write meta entry'));
+        });
+      } catch {
+        // Meta write failure is non-fatal; continue without it
+      }
       resolve(db);
     };
 
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
       const currentVersion = event.oldVersion;
-
-      if (currentVersion < CURRENT_SCHEMA_VERSION) {
-        migrateSchema(db, currentVersion).catch((err) => {
-          reject(err);
-        });
-      }
+      migrateSchema(db, currentVersion);
     };
   });
 
