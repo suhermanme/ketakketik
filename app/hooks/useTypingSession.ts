@@ -140,13 +140,11 @@ export function useTypingSession(profileId: string, mode: TrainingMode = 'practi
       : 0;
 
     const sessionId = generateUuid();
-    await profileStoreRef.current.recordSessionKeyData(
-      sessionId,
-      keyErrorsRef.current,
-      keyPressesRef.current,
-      avgLatencyMs,
-    );
 
+    // recordSession() must come first — it creates the Session record in
+    // IndexedDB. recordSessionKeyData() then reads and augments that record
+    // with per-key data. Calling them in the opposite order would fail because
+    // the session would not yet exist.
     await profileStoreRef.current.recordSession({
       sessionId,
       profileId,
@@ -159,6 +157,13 @@ export function useTypingSession(profileId: string, mode: TrainingMode = 'practi
       textSample: trainingString,
       durationMs: stats.durationMs,
     });
+
+    await profileStoreRef.current.recordSessionKeyData(
+      sessionId,
+      keyErrorsRef.current,
+      keyPressesRef.current,
+      avgLatencyMs,
+    );
   }, [profileId, stats, trainingString]);
 
   /** Handle key down event */
