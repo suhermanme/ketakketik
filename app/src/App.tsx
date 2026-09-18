@@ -40,16 +40,25 @@ export const App: React.FC = () => {
   const { sessions, stats, loading, errors, fetchHistory, fetchStats } = useSessionHistory();
   const hasHistory = sessions.length > 0;
 
+  const loadedHistoryProfileId = useRef<string | null>(null);
   const [loadedHistory, setLoadedHistory] = useState(false);
 
   useEffect(() => {
-    if (viewMode === 'history' && current.id && !loadedHistory) {
+    if (viewMode !== 'history') {
+      setLoadedHistory(false);
+      loadedHistoryProfileId.current = null;
+      return;
+    }
+    if (!current.id) return;
+
+    const profileChanged = loadedHistoryProfileId.current !== current.id;
+    if (profileChanged) {
+      loadedHistoryProfileId.current = current.id;
+    }
+    if (profileChanged || !loadedHistory) {
       setLoadedHistory(true);
       fetchHistory(current.id).catch(() => {});
       fetchStats(current.id).catch(() => {});
-    }
-    if (viewMode !== 'history') {
-      setLoadedHistory(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode, current.id]);

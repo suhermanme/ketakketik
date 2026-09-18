@@ -73,14 +73,14 @@ export class ProfileStore {
       active: false,
     };
 
-    await write<Profile>(db, 'profiles', profile);
+    await write<Profile>(db, 'profiles', profile, profile.id);
 
     // If no active profile exists, activate this one
     const activeProfile = await getByIndex<Profile>(db, 'profiles', 'active_idx', 'active' as string);
     if (activeProfile === null) {
       profile.active = true;
       this.currentProfileId = id;
-      await write<Profile>(db, 'profiles', profile);
+      await write<Profile>(db, 'profiles', profile, profile.id);
     }
 
     return cloneDeep(profile);
@@ -94,7 +94,7 @@ export class ProfileStore {
       const current = await read<Profile>(db, 'profiles', this.currentProfileId);
       if (current !== undefined) {
         current.active = false;
-        await write<Profile>(db, 'profiles', current);
+        await write<Profile>(db, 'profiles', current, this.currentProfileId);
       }
     }
 
@@ -106,7 +106,7 @@ export class ProfileStore {
 
     target.active = true;
     target.lastActive = Date.now();
-    await write<Profile>(db, 'profiles', target);
+    await write<Profile>(db, 'profiles', target, id);
 
     this.currentProfileId = id;
   }
@@ -147,7 +147,7 @@ export class ProfileStore {
       if (remaining.length > 0) {
         const next = remaining[0];
         next.active = true;
-        await write<Profile>(db, 'profiles', next);
+        await write<Profile>(db, 'profiles', next, next.id);
         this.currentProfileId = next.id;
       } else {
         this.currentProfileId = null;
@@ -169,7 +169,7 @@ export class ProfileStore {
       type: sessionData.type,
       config: sessionData.config ?? {},
     };
-    await write<Session>(db, 'sessions', session);
+    await write<Session>(db, 'sessions', session, sessionData.sessionId);
 
     // Store WPM entry
     const wpmEntry: WpmEntry = {
@@ -183,13 +183,13 @@ export class ProfileStore {
       textSample: sessionData.textSample,
       durationMs: sessionData.durationMs,
     };
-    await write<WpmEntry>(db, 'wpm_history', wpmEntry);
+    await write<WpmEntry>(db, 'wpm_history', wpmEntry, wpmEntry.id);
 
     // Update profile lastActive
     const profile = await read<Profile>(db, 'profiles', sessionData.profileId);
     if (profile !== undefined) {
       profile.lastActive = sessionData.completedAt;
-      await write<Profile>(db, 'profiles', profile);
+      await write<Profile>(db, 'profiles', profile, sessionData.profileId);
     }
   }
 
@@ -216,7 +216,7 @@ export class ProfileStore {
     session.config.keyPresses = keyPresses;
     session.config.avgLatencyMs = avgLatencyMs;
 
-    await write<Session>(db, 'sessions', session);
+    await write<Session>(db, 'sessions', session, sessionId);
   }
 
   async getHistory(profileId: string, range?: DateRange): Promise<WpmEntry[]> {
@@ -294,7 +294,7 @@ export class ProfileStore {
         existing.errorCount += 1;
         existing.totalPresses += 1;
         existing.lastErrorTimestamp = now;
-        await write<KeyError>(db, 'key_errors', existing);
+        await write<KeyError>(db, 'key_errors', existing, profileScopedKey(profileId, key));
       } else {
         const newError: KeyError = {
           id: this.generateId(),
@@ -304,7 +304,7 @@ export class ProfileStore {
           totalPresses: 1,
           lastErrorTimestamp: now,
         };
-        await write<KeyError>(db, 'key_errors', newError);
+        await write<KeyError>(db, 'key_errors', newError, profileScopedKey(profileId, key));
       }
     } else if (type === 'press') {
       // Update KeyError totalPresses
@@ -312,7 +312,7 @@ export class ProfileStore {
 
       if (existing !== null) {
         existing.totalPresses += 1;
-        await write<KeyError>(db, 'key_errors', existing);
+        await write<KeyError>(db, 'key_errors', existing, profileScopedKey(profileId, key));
       } else {
         const newKey: KeyError = {
           id: this.generateId(),
@@ -322,7 +322,7 @@ export class ProfileStore {
           totalPresses: 1,
           lastErrorTimestamp: 0,
         };
-        await write<KeyError>(db, 'key_errors', newKey);
+        await write<KeyError>(db, 'key_errors', newKey, profileScopedKey(profileId, key));
       }
 
       // Record latency if provided
@@ -335,7 +335,7 @@ export class ProfileStore {
           timestamp: now,
           direction: KeyDirection.DOWN,
         };
-        await write<LatencyLog>(db, 'latency_logs', latencyLog);
+        await write<LatencyLog>(db, 'latency_logs', latencyLog, latencyLog.id);
       }
     }
   }

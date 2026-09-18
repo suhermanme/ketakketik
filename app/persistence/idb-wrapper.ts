@@ -49,12 +49,13 @@ export function write<T>(
   db: IDBDatabase,
   storeName: string,
   value: T,
+  key?: string | number,
   mode: IdbReadMode = 'readwrite',
 ): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const transaction = db.transaction(storeName, toTransactionMode(mode));
     const store = transaction.objectStore(storeName);
-    const request = store.put(value);
+    const request = key !== undefined ? store.put(value, key) : store.put(value);
 
     request.onsuccess = () => resolve();
     request.onerror = () =>
@@ -266,13 +267,19 @@ export function batchWrite<T>(
   db: IDBDatabase,
   storeName: string,
   records: T[],
+  keyPath: keyof T = 'id' as keyof T,
 ): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const transaction = db.transaction(storeName, 'readwrite');
     const store = transaction.objectStore(storeName);
 
     for (const record of records) {
-      store.put(record);
+      const key = record[keyPath];
+      if (key !== undefined) {
+        store.put(record, key as string | number);
+      } else {
+        store.put(record);
+      }
     }
 
     transaction.oncomplete = () => resolve();
