@@ -206,7 +206,6 @@ See [Build and deployment](docs/BUILDING.md) for complete instructions, architec
 
 ## Known limitations
 
-- Session history is persisted in IndexedDB but is not wired up in the current UI — no dashboard or history view exists yet.
 - Browser and desktop storage namespaces are separate.
 - Desktop installer builds have not been verified.
 

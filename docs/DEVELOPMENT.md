@@ -45,7 +45,7 @@ Browser entry / Electron BrowserWindow
 | `app/audio/AudioEngine.ts` | Web Audio oscillator creation, scheduling, envelopes, compressor, cleanup |
 | `engine/src/engine.ts` | Seeded generation, weakness scoring, metadata, progress comparison |
 | `engine/src/wordList.ts` | Deduplicated word dictionary and actual-length buckets |
-| `app/persistence/` | Separate IndexedDB schema/store implementation, not wired to the current UI |
+| `app/persistence/` | IndexedDB schema/store; wired to the UI via `useSessionHistory` hook and `SessionHistoryDashboard` |
 | `electron/main.ts` | Desktop startup and window configuration |
 | `electron/preload.ts` | Incomplete bridge implementation; see limitations |
 | `public/` | Copied static icons and web manifest |
@@ -80,7 +80,7 @@ Audio tests use a fake AudioContext: they verify scheduling, connections, fresh 
 
 ## Persistence boundary
 
-Current profile/theme UI uses `localStorage`; current session, mode, file contents, audio preferences, and selected drill are in React memory. The IndexedDB layer uses the database name `ketakketik`, but its presence is not evidence that session history is saved. No backend or cloud synchronization is configured.
+Current profile/theme UI uses `localStorage`; current session, mode, file contents, audio preferences, and selected drill are in React memory. The IndexedDB layer uses the database name `ketakketik`. Session history is saved via `ProfileStore.recordSession()` and `recordSessionKeyData()` called from `useTypingSession.completeSession()`, and read back via `useSessionHistory.fetchHistory()` and `fetchStats()`. No backend or cloud synchronization is configured.
 
 ## Extending the app
 
@@ -135,7 +135,7 @@ These are findings from the current code, not changes made as part of documentat
 - **Development launcher:** the helper has a hardcoded Homebrew path, uses `lsof`, and kills port-5173 processes. Use the explicit two-terminal workflow in the build guide instead when portability matters.
 - **Standalone engine packaging:** `engine/package.json` references a missing `rollup.config.mts`. Its advertised standalone exports/build are not a verified publishing workflow. Root app compilation uses source aliases instead.
 - **Lint setup:** the root script invokes ESLint 9, but no project ESLint configuration is provided. Typecheck and Vitest are the available validated checks; lint is not currently a verified gate.
-- **Data integration:** historical results and adaptive training are not connected to the UI persistence layer.
+- **Data integration:** historical results and adaptive training are now connected to the UI via the Session History Dashboard (see `app/components/SessionHistoryDashboard.tsx`). The dashboard is available from the Practice/History toggle in the header.
 - **Input:** matching is case-insensitive, and emoji/IME/grapheme composition is not supported by the character-by-character model.
 - **Web offline behavior:** the manifest has icons/metadata but no service-worker implementation.
 - **Distribution:** signing/notarization and installed macOS/Windows runtime verification remain outstanding.
