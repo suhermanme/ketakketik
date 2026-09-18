@@ -63,3 +63,6 @@ coverage/
 .cache/
 *.tmp
 dist-ee/
+
+# AI session memory
+.memory/

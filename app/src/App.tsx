@@ -76,6 +76,7 @@ export const App: React.FC = () => {
   };
 
   const completedSoundRef = useRef(false);
+  const sessionCompleteRef = useRef(false);
   const silentReleaseKeys = useRef(new Set<string>());
   useEffect(() => {
     if (session.stats.completedAt === null) {
@@ -86,12 +87,26 @@ export const App: React.FC = () => {
     }
   }, [session.stats.completedAt, playFeedback]);
 
-  // Complete the session and record data to IndexedDB on session completion
+  // Complete the session and record data to IndexedDB on session completion.
+  // Uses a ref to prevent re-firing when completeSession changes (it has
+  // [profileId, stats, trainingString] as deps — stats changes every
+  // keypress, which would otherwise re-create the callback and cause the
+  // effect to re-run repeatedly).
   useEffect(() => {
-    if (session.stats.completedAt !== null) {
-      session.completeSession();
+    if (session.stats.completedAt !== null && !sessionCompleteRef.current) {
+      sessionCompleteRef.current = true;
+      session.completeSession().catch((err) => {
+        console.error('[App] Failed to record completed session:', err);
+      });
     }
   }, [session.stats.completedAt, session.completeSession]);
+
+  // Reset the ref when a new session starts
+  useEffect(() => {
+    if (session.stats.completedAt === null) {
+      sessionCompleteRef.current = false;
+    }
+  }, [session.stats.completedAt]);
 
   const [activeKeys, setActiveKeys] = useState<Set<string>>(new Set());
   const [errorKeys, setErrorKeys] = useState<Set<string>>(new Set());
@@ -188,7 +203,7 @@ export const App: React.FC = () => {
       <input ref={fileInputRef} type="file" accept=".txt,text/plain" className="hidden" aria-label="Load custom text file" onChange={selectTextFile} />
       <CompletionConfetti completedAt={session.stats.completedAt} />
       {/* Header */}
-      <header className={`sticky top-0 z-40 flex flex-wrap items-center justify-between gap-3 px-4 py-2 shrink-0 ${bgClass}`}>
+      <header className={`sticky top-0 z-40 flex flex-wrap items-center justify-center gap-3 px-4 py-2 shrink-0 ${bgClass}`}>
         <ProfileSwitcher
           current={current}
           list={list}
@@ -199,11 +214,6 @@ export const App: React.FC = () => {
         />
 
         <div className="order-last w-full md:order-none md:w-auto md:flex-1 min-w-0 flex flex-col items-center gap-2 md:max-w-xl">
-          <ThemeToggle
-            mode={mode}
-            effectiveTheme={effectiveTheme}
-            onToggle={setMode}
-          />
           {/* View mode toggle */}
           <div className="flex items-center gap-1 rounded-lg border overflow-hidden border-gray-400/30">
             <button
@@ -270,28 +280,23 @@ export const App: React.FC = () => {
           </div>
         </div>
 
-        <SoundSettings
-          activeProfile={audioState.activeProfile.name as 'clicky' | 'tactile' | 'linear'}
-          volume={audioState.volume}
-          onProfileChange={setAudioProfile}
-          onVolumeChange={setAudioVolume}
-          effectiveTheme={effectiveTheme}
-        />
       </header>
 
       {/* Main area */}
-      <main className="flex-1 flex flex-col items-center justify-start md:justify-center gap-4 p-4">
+      <main className="flex-1 flex flex-col md:flex-row items-center gap-4 p-4">
         {viewMode === 'history' ? (
-          <SessionHistoryDashboard
-            sessions={sessions}
-            stats={stats}
-            loading={loading}
-            errors={errors}
-            effectiveTheme={effectiveTheme}
-          />
+          <div className="w-full">
+            <SessionHistoryDashboard
+              sessions={sessions}
+              stats={stats}
+              loading={loading}
+              errors={errors}
+              effectiveTheme={effectiveTheme}
+            />
+          </div>
         ) : (
           <>
-            <div className="flex-1 min-w-0 flex flex-col items-center justify-center max-w-4xl w-full">
+            <div className="flex-1 min-w-0 flex flex-col items-center justify-center max-w-4xl w-full mx-auto">
               <WpmGraph
                 samples={session.wpmHistory}
                 currentWpm={session.stats.currentWpm}
@@ -319,23 +324,38 @@ export const App: React.FC = () => {
               </div>
             </div>
 
-            {/* Metrics panel (desktop only) */}
-            <div className="hidden md:block shrink-0">
-              <MetricsPanel
-                stats={session.stats}
-                effectiveTheme={effectiveTheme}
-                isSessionActive={session.isSessionActive}
-                onNextLesson={trainingMode === 'lessons' && session.stats.completedAt !== null && lessonIndex < FINGER_LESSONS.length - 1 ? () => {
-                  setLessonIndex(index => index + 1); clearKeys(); containerRef.current?.focus();
-                } : undefined}
-                newLessonLabel={trainingMode === 'custom' ? 'Load text file' : 'New lesson'}
-                progress={session.trainingString.length ? session.currentIndex / session.trainingString.length : 0}
-                onRestart={restartLesson}
-                onRegenerate={newLesson}
-              />
-            </div>
           </>
         )}
+
+        {/* Right side panel */}
+        <div className="hidden md:flex md:flex-col shrink-0 gap-4">
+          <ThemeToggle
+            mode={mode}
+            effectiveTheme={effectiveTheme}
+            onToggle={setMode}
+          />
+          <SoundSettings
+            activeProfile={audioState.activeProfile.name as 'clicky' | 'tactile' | 'linear'}
+            volume={audioState.volume}
+            onProfileChange={setAudioProfile}
+            onVolumeChange={setAudioVolume}
+            effectiveTheme={effectiveTheme}
+          />
+          {viewMode === 'practice' && (
+            <MetricsPanel
+              stats={session.stats}
+              effectiveTheme={effectiveTheme}
+              isSessionActive={session.isSessionActive}
+              onNextLesson={trainingMode === 'lessons' && session.stats.completedAt !== null && lessonIndex < FINGER_LESSONS.length - 1 ? () => {
+                setLessonIndex(index => index + 1); clearKeys(); containerRef.current?.focus();
+              } : undefined}
+              newLessonLabel={trainingMode === 'custom' ? 'Load text file' : 'New lesson'}
+              progress={session.trainingString.length ? session.currentIndex / session.trainingString.length : 0}
+              onRestart={restartLesson}
+              onRegenerate={newLesson}
+            />
+          )}
+        </div>
       </main>
 
       {/* Mobile metrics */}

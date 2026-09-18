@@ -9,12 +9,14 @@ export interface ThemeToggleProps {
   mode: ThemeMode;
   effectiveTheme: EffectiveTheme;
   onToggle: (mode: ThemeMode) => void;
+  label?: string;
 }
 
 export const ThemeToggle: React.FC<ThemeToggleProps> = ({
   mode,
   effectiveTheme,
   onToggle,
+  label = 'Theme',
 }) => {
   const modes: ThemeMode[] = ['light', 'dark', 'auto'];
 
@@ -30,34 +32,43 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
       : 'bg-white/60 text-gray-500 hover:bg-gray-100/60 border-gray-300/30';
   };
 
+  const cardBg = effectiveTheme === 'dark'
+    ? 'bg-gray-800/40 border-gray-700/30'
+    : 'bg-white/60 border-gray-300/30';
+
   return (
-    <div
-      className={`
-        inline-flex rounded-lg p-0.5
-        ${effectiveTheme === 'dark'
-          ? 'bg-gray-800/40 border border-gray-700/30'
-          : 'bg-white/60 border border-gray-300/30'}
-      `}
-      role="radiogroup"
-      aria-label="Theme mode"
-    >
-      {modes.map((m) => (
-        <button
-          key={m}
-          aria-label={m === 'auto' ? 'System theme' : `${m} theme`}
-          title={m === 'auto' ? 'System theme' : `${m} theme`}
-          role="radio"
-          aria-checked={mode === m}
-          onClick={() => onToggle(m)}
-          className={`
-            px-2.5 py-1 text-xs font-medium rounded-md
-            border transition-all duration-150
-            ${getButtonStyle(m)}
-          `}
-        >
-          {m === 'light' ? '☀' : m === 'dark' ? '☾' : '⚙'}
-        </button>
-      ))}
+    <div className={`rounded-xl p-3 border ${cardBg}`}>
+      <h3 className={`text-xs uppercase tracking-wider font-semibold mb-2 ${effectiveTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+        {label}
+      </h3>
+      <div
+        className={`
+          inline-flex justify-center rounded-lg p-0.5
+          ${effectiveTheme === 'dark'
+            ? 'bg-gray-800/40 border border-gray-700/30'
+            : 'bg-white/60 border border-gray-300/30'}
+        `}
+        role="radiogroup"
+        aria-label="Theme mode"
+      >
+        {modes.map((m) => (
+          <button
+            key={m}
+            aria-label={m === 'auto' ? 'System theme' : `${m} theme`}
+            title={m === 'auto' ? 'System theme' : `${m} theme`}
+            role="radio"
+            aria-checked={mode === m}
+            onClick={() => onToggle(m)}
+            className={`
+              px-2.5 py-1 text-xs font-medium rounded-md
+              border transition-all duration-150
+              ${getButtonStyle(m)}
+            `}
+          >
+            {m === 'light' ? '☀' : m === 'dark' ? '☾' : '⚙'}
+          </button>
+        ))}
+      </div>
     </div>
   );
 };
